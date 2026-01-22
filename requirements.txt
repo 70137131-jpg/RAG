@@ -1,0 +1,23 @@
+# RAG Pipeline Dependencies
+
+# Web Framework
+flask>=2.3.0
+werkzeug>=2.3.0
+
+# Data Loading
+datasets>=2.14.0
+
+# Vector Store
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+tiktoken>=0.4.0
+
+# LLM Integration
+openai>=1.0.0
+google-generativeai>=0.3.0
+python-dotenv>=1.0.0
+
+# Utilities
+tqdm>=4.65.0
+pytest>=7.4.0
+pytest-mock>=3.11.0

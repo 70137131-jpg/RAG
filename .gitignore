@@ -1,0 +1,19 @@
+# Python artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Virtual envs
+.venv/
+venv/
+
+# IDEs
+.idea/
+
+# Local data / caches
+chroma_db/
+evaluation_results.json
+
+# Odd local files
+=2.19.0
+nul
