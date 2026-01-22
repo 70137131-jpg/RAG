@@ -3,7 +3,18 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    },
+    {
+      "src": "static/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "templates/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -16,22 +27,6 @@
       "dest": "/api/index.py"
     }
   ],
-  "env": {
-    "GOOGLE_API_KEY": "@google_api_key",
-    "COLLECTION_NAME": "squad_rag",
-    "PERSIST_DIR": "/tmp/chroma_db",
-    "EMBEDDING_MODEL": "all-MiniLM-L6-v2",
-    "LLM_MODEL": "gemini-1.5-flash",
-    "LLM_TEMPERATURE": "0.1",
-    "LLM_MAX_TOKENS": "300",
-    "TOP_K": "3",
-    "SECRET_KEY": "@flask_secret_key"
-  },
-  "build": {
-    "env": {
-      "PYTHON_VERSION": "3.11"
-    }
-  },
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
@@ -39,15 +34,4 @@
     }
   },
   "regions": ["iad1"]
-}
-{
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "pythonVersion": "3.11"
-      }
-    }
-  ]
 }
