@@ -10,6 +10,10 @@
 2. **Set up API Key**:
    Create a `.env` file in the project root with one of these:
    ```
+   GOOGLE_API_KEY=your-google-key-here
+   ```
+   OR
+   ```
    OPENAI_API_KEY=sk-your-key-here
    ```
    OR
@@ -85,9 +89,10 @@ Then open your browser to: `http://localhost:5000`
 
 ## Configuration Profiles
 
-- **fast**: Smaller model, faster responses (gpt-3.5-turbo)
-- **balanced**: Good balance (default, gpt-3.5-turbo)
-- **accurate**: Larger model, better accuracy (gpt-4)
+- **fast**: Smaller model, faster responses (gemini-1.5-flash)
+- **balanced**: Good balance (default, gemini-1.5-flash)
+- **accurate**: Larger model, better accuracy (gemini-1.5-flash)
+- **gemini**: Gemini 1.5 Flash configuration
 
 ## Troubleshooting
 

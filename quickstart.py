@@ -16,6 +16,7 @@ def check_requirements():
         'chromadb',
         'datasets',
         'openai',
+        'google.generativeai',
         'dotenv'
     ]
 

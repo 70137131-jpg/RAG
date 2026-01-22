@@ -1,0 +1,36 @@
+name: rag-chatbot
+region: nyc
+services:
+  - name: web
+    github:
+      repo: YOUR_GITHUB_USERNAME/YOUR_REPO_NAME
+      branch: main
+      deploy_on_push: true
+    build_command: pip install -r requirements.txt
+    run_command: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 2
+    environment_slug: python
+    instance_size_slug: professional-xs
+    instance_count: 1
+    http_port: 8080
+    envs:
+      - key: GOOGLE_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SECRET_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: COLLECTION_NAME
+        scope: RUN_TIME
+        value: "squad_rag"
+      - key: PERSIST_DIR
+        scope: RUN_TIME
+        value: "/tmp/chroma_db"
+      - key: EMBEDDING_MODEL
+        scope: RUN_TIME
+        value: "all-MiniLM-L6-v2"
+      - key: LLM_MODEL
+        scope: RUN_TIME
+        value: "gemini-1.5-flash"
+      - key: TOP_K
+        scope: RUN_TIME
+        value: "3"

@@ -25,7 +25,7 @@ class RAGPipeline:
     def __init__(
         self,
         vector_store: VectorStore,
-        llm_model: str = "gpt-oss-20b",  # Model name for OpenRouter or direct API
+        llm_model: str = "gemini-1.5-flash",  # Default to Gemini 1.5 Flash
         temperature: float = 0.1,
         max_tokens: int = 300,
         max_context_length: int = 4000,

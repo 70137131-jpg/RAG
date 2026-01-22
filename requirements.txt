@@ -3,6 +3,7 @@
 # Web Framework
 flask>=2.3.0
 werkzeug>=2.3.0
+gunicorn>=21.0.0
 
 # Data Loading
 datasets>=2.14.0

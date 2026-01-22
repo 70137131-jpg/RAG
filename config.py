@@ -22,7 +22,7 @@ class VectorStoreConfig:
 @dataclass
 class LLMConfig:
     """Configuration for LLM"""
-    model: str = "gpt-4"
+    model: str = "gemini-1.5-flash"
     temperature: float = 0.1
     max_tokens: int = 300
     base_url: Optional[str] = None
@@ -87,7 +87,7 @@ class RAGConfig:
         config = cls()
         config.vector_store.embedding_model = "all-MiniLM-L6-v2"
         config.vector_store.chunk_size = 300
-        config.llm.model = "gpt-3.5-turbo"
+        config.llm.model = "gemini-1.5-flash"
         config.llm.temperature = 0.1
         config.top_k = 2
         return config
@@ -98,7 +98,7 @@ class RAGConfig:
         config = cls()
         config.vector_store.embedding_model = "all-mpnet-base-v2"
         config.vector_store.chunk_size = 700
-        config.llm.model = "gpt-4"
+        config.llm.model = "gemini-1.5-flash"
         config.llm.temperature = 0.0
         config.llm.max_tokens = 500
         config.top_k = 5
@@ -110,7 +110,7 @@ class RAGConfig:
         config = cls()
         config.vector_store.embedding_model = "all-MiniLM-L6-v2"
         config.vector_store.chunk_size = 500
-        config.llm.model = "gpt-3.5-turbo"
+        config.llm.model = "gemini-1.5-flash"
         config.llm.temperature = 0.1
         config.llm.max_tokens = 300
         config.top_k = 3
