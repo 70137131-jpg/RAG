@@ -3,6 +3,7 @@ Quick Start Script
 Fastest way to get the RAG system running
 """
 
+import _env_setup  # noqa: F401  (must be first: forces torch backend, disables TensorFlow)
 import os
 import sys
 
@@ -33,7 +34,7 @@ def check_requirements():
     if missing:
         print(f"\n❌ Missing packages: {', '.join(missing)}")
         print("\nInstall them with:")
-        print("  pip install -r requirements.txt")
+        print("  python3 -m pip install -r requirements.txt")
         return False
 
     print("\n✓ All requirements satisfied!\n")
@@ -41,26 +42,23 @@ def check_requirements():
 
 
 def check_api_key():
-    """Check if API key is configured"""
+    """Check if an LLM API key is configured (optional — offline mode works without one)."""
     from dotenv import load_dotenv
     load_dotenv()
 
-    api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    google_key = os.getenv("GOOGLE_API_KEY")
+    openai_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
 
-    if not api_key:
-        print("❌ API key not found!")
-        print("\nPlease set your API key:")
-        print("  1. Copy .env.example to .env")
-        print("  2. Edit .env and add OPENROUTER_API_KEY, OPENAI_API_KEY, or DEEPSEEK_API_KEY")
-        print("\nOr set it as an environment variable:")
-        print("  export OPENROUTER_API_KEY='your-key-here'")
-        return False
+    if google_key:
+        print("✓ Gemini API key found (LLM generation enabled)\n")
+    elif openai_key:
+        print("✓ OpenAI-compatible API key found (LLM generation enabled)\n")
+    else:
+        print("ℹ️  No LLM API key found — running in OFFLINE extractive mode.")
+        print("   Answers are drawn directly from retrieved contexts (no external calls).")
+        print("   To enable LLM-generated answers, copy .env.example to .env and add a key.\n")
 
-    if not api_key.startswith('sk-'):
-        print("⚠️  Warning: API key format looks incorrect")
-        print("   OpenAI keys usually start with 'sk-'")
-
-    print("✓ API key found\n")
+    # Always return True: the pipeline degrades gracefully to offline mode.
     return True
 
 
@@ -138,8 +136,9 @@ def run_simple_demo():
 
         print("\n✅ Quickstart demo completed successfully!")
         print("\nNext steps:")
-        print("  - Run 'python demo.py' for interactive mode")
-        print("  - Run 'python evaluate.py' to evaluate on more samples")
+        print("  - Run 'python3 ingest.py --config balanced --samples 100 --yes'")
+        print("  - Run 'python3 app.py' for the web interface")
+        print("  - Run 'python3 evaluate.py' to evaluate on more samples")
         print("  - Check README.md for full documentation")
         print()
 
@@ -149,8 +148,8 @@ def run_simple_demo():
         traceback.print_exc()
         print("\nTroubleshooting:")
         print("  - Make sure you have internet connection")
-        print("  - Check your API key (OPENROUTER_API_KEY, OPENAI_API_KEY, or DEEPSEEK_API_KEY)")
-        print("  - Try: pip install -r requirements.txt")
+        print("  - Add an LLM key only if you want generated answers instead of offline extractive answers")
+        print("  - Try: python3 -m pip install -r requirements.txt")
         sys.exit(1)
 
 

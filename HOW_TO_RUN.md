@@ -1,101 +1,110 @@
 # How to Run the RAG Project
 
+This project can run end-to-end with no LLM API key. Without a key, answers use
+the local offline extractive fallback. Add one provider key to `.env` only if you
+want LLM-generated answers.
+
 ## Prerequisites
 
-1. **Install Dependencies** (already done):
-   ```powershell
-   pip install -r requirements.txt
-   ```
+Install dependencies:
 
-2. **Set up API Key**:
-   Create a `.env` file in the project root with one of these:
-   ```
-   GOOGLE_API_KEY=your-google-key-here
-   ```
-   OR
-   ```
-   OPENAI_API_KEY=sk-your-key-here
-   ```
-   OR
-   ```
-   OPENROUTER_API_KEY=sk-or-v1-your-key-here
-   ```
-   OR
-   ```
-   DEEPSEEK_API_KEY=sk-your-key-here
-   ```
-
-## Running the Project
-
-### Option 1: Quick Start Demo (Recommended for first time)
-Runs a simple demo with 50 samples:
-```powershell
-python quickstart.py
+```bash
+python3 -m pip install -r requirements.txt
 ```
 
-### Option 2: Data Ingestion (ingest.py)
-Load data into the vector store. This must be run before using the web app:
+Optional: create `.env` from the example file:
 
-**Basic usage:**
-```powershell
-python ingest.py
+```bash
+cp .env.example .env
 ```
 
-**With options:**
-```powershell
-# Use fast configuration
-python ingest.py --config fast
+Then set one provider key if you want live LLM generation:
 
-# Use balanced configuration (default)
-python ingest.py --config balanced
-
-# Use accurate configuration
-python ingest.py --config accurate
-
-# Limit number of samples
-python ingest.py --samples 50
-
-# Custom collection name
-python ingest.py --collection my_collection
+```bash
+GOOGLE_API_KEY=your-google-key-here
+# or OPENAI_API_KEY=sk-...
+# or OPENROUTER_API_KEY=sk-or-v1-...
+# or DEEPSEEK_API_KEY=sk-...
 ```
 
-### Option 3: Web Application (app.py)
-Run the Flask web interface:
+Default LLM model: `gemini-2.5-flash`.
 
-```powershell
-python app.py
+## Fastest Start
+
+```bash
+./run.sh
 ```
 
-Then open your browser to: `http://localhost:5000`
+This installs dependencies, ingests 100 SQuAD samples, and starts the web app on
+`http://localhost:5000`.
 
-**Note:** You must run `ingest.py` first to populate the vector store before the web app will work.
+Useful overrides:
 
-## Typical Workflow
+```bash
+SAMPLES=50 ./run.sh
+CONFIG=fast ./run.sh
+PORT=5050 ./run.sh
+SKIP_INGEST=1 ./run.sh
+PYTHON=/path/to/python3 ./run.sh
+```
 
-1. **First time setup:**
-   ```powershell
-   # 1. Create .env file with your API key
-   # 2. Ingest data
-   python ingest.py --config balanced --samples 100
-   
-   # 3. Run the web app
-   python app.py
-   ```
+## Manual Workflow
 
-2. **Quick test:**
-   ```powershell
-   python quickstart.py
-   ```
+Ingest data before starting the web app:
+
+```bash
+python3 ingest.py --config balanced --samples 100 --yes
+```
+
+Start the Flask app:
+
+```bash
+python3 app.py
+```
+
+Then open `http://localhost:5000`.
+
+## Quick Demo
+
+Run a small local demo that builds a temporary collection and asks example
+questions:
+
+```bash
+python3 quickstart.py
+```
 
 ## Configuration Profiles
 
-- **fast**: Smaller model, faster responses (gemini-1.5-flash)
-- **balanced**: Good balance (default, gemini-1.5-flash)
-- **accurate**: Larger model, better accuracy (gemini-1.5-flash)
-- **gemini**: Gemini 1.5 Flash configuration
+- `fast`: smaller chunks, lower `top_k`, fastest local demo
+- `balanced`: default profile
+- `accurate`: larger embedding model and higher `top_k`
+- `gemini`: Gemini-oriented defaults using `gemini-2.5-flash`
+
+## Runtime Configuration
+
+The app validates environment values at startup. Invalid values such as
+`TOP_K=many`, `TEMPERATURE=3`, or `CHUNK_OVERLAP >= CHUNK_SIZE` fail fast with a
+clear config error.
+
+Important env vars:
+
+- `LLM_MODEL`
+- `TEMPERATURE`
+- `MAX_TOKENS`
+- `TOP_K`
+- `COLLECTION_NAME`
+- `PERSIST_DIRECTORY`
+- `EMBEDDING_MODEL`
+- `CHUNK_SIZE`
+- `CHUNK_OVERLAP`
+- `DATASET_NAME`
+- `DATASET_SPLIT`
+- `MAX_SAMPLES`
+- `SECRET_KEY`
 
 ## Troubleshooting
 
-- **"API key not found"**: Make sure you created a `.env` file with your API key
-- **"Vector store is empty"**: Run `python ingest.py` first
-- **Import errors**: Make sure all dependencies are installed: `pip install -r requirements.txt`
+- Missing packages: run `python3 -m pip install -r requirements.txt`.
+- Empty vector store: run `python3 ingest.py --config balanced --samples 100 --yes`.
+- No API key: expected; the app uses offline extractive answers.
+- LLM call failure: the pipeline falls back to offline extractive answers.
