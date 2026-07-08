@@ -14,9 +14,6 @@ venv/
 chroma_db/
 evaluation_results.json
 
-# Odd local files
-=2.19.0
-nul
-
 # Environment
 .env
+.env.local

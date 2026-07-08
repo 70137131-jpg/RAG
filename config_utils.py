@@ -26,7 +26,7 @@ def create_vector_store_from_config(config: VectorStoreConfig, reranker_model: s
         chunk_size=config.chunk_size,
         chunk_overlap=config.chunk_overlap,
         use_token_chunking=True,  # Use token-aware chunking by default
-        reranker_model=reranker_model
+        reranker_model=reranker_model or config.reranker_model
     )
 
 

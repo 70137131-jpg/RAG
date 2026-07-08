@@ -30,7 +30,7 @@ services:
         value: "all-MiniLM-L6-v2"
       - key: LLM_MODEL
         scope: RUN_TIME
-        value: "gemini-1.5-flash"
+        value: "gemini-2.5-flash"
       - key: TOP_K
         scope: RUN_TIME
         value: "3"

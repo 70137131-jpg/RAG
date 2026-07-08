@@ -91,6 +91,10 @@ You can control defaults via environment variables (see `.env.example`):
 - `COLLECTION_NAME`, `PERSIST_DIRECTORY`
 - `EMBEDDING_MODEL`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `RERANKER_MODEL`
 - `DATASET_NAME`, `DATASET_SPLIT`, `MAX_SAMPLES`
+- `REQUEST_MAX_BYTES`, `MAX_QUESTION_LENGTH`
+- `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS`
+- `ADMIN_TOKEN` (protects `/api/stats` and `/metrics` when set)
+- `SESSION_COOKIE_SECURE`, `SESSION_COOKIE_SAMESITE`
 
 Runtime configuration is validated at startup. Invalid numeric values, empty
 required strings, and invalid chunk settings fail fast with clear errors.

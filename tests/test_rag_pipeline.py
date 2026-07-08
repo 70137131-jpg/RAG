@@ -2,6 +2,7 @@
 Tests for RAG pipeline
 """
 
+import os
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from rag_pipeline import RAGPipeline
@@ -135,6 +136,44 @@ class TestRAGPipelineMocked(unittest.TestCase):
             user_message = messages[1]['content']
             self.assertIn(custom_prompt, user_message)
             self.assertIn("Custom answer", answer)
+
+
+class TestOfflineExtractiveMode(unittest.TestCase):
+    """Test the offline extractive fallback (no LLM API key configured)."""
+
+    def _make_offline_pipeline(self):
+        mock_vs = Mock()
+        # Clear ALL provider keys so the pipeline selects the offline backend.
+        env = {
+            'GOOGLE_API_KEY': '', 'OPENAI_API_KEY': '',
+            'OPENROUTER_API_KEY': '', 'DEEPSEEK_API_KEY': ''
+        }
+        with patch('rag_pipeline.load_dotenv'), patch.dict('os.environ', env, clear=False):
+            for key in list(env):
+                os.environ.pop(key, None)
+            return RAGPipeline(vector_store=mock_vs, llm_model="gemini-2.5-flash")
+
+    def test_selects_offline_backend_without_keys(self):
+        """With no API keys, the pipeline runs in offline mode."""
+        rag = self._make_offline_pipeline()
+        self.assertEqual(rag.backend, "offline")
+
+    def test_extractive_answer_is_grounded_and_cited(self):
+        """Offline answers are drawn from context and include a citation."""
+        rag = self._make_offline_pipeline()
+        contexts = [
+            "The Eiffel Tower is located in Paris. It was completed in 1889.",
+            "The Great Wall of China is over 13,000 miles long."
+        ]
+        answer = rag.generate("Where is the Eiffel Tower located?", contexts)
+        self.assertIn("Paris", answer)
+        self.assertIn("[Context 1]", answer)
+
+    def test_extractive_answer_handles_no_contexts(self):
+        """Offline mode degrades gracefully when nothing is retrieved."""
+        rag = self._make_offline_pipeline()
+        answer = rag.generate("Anything?", [])
+        self.assertIn("cannot answer", answer.lower())
 
 
 if __name__ == '__main__':

@@ -3,10 +3,10 @@ Vector Store using ChromaDB
 Handles embedding and retrieval of documents
 """
 
-# Disable TensorFlow in transformers (not needed for this project)
+# Force the PyTorch backend and disable TensorFlow BEFORE importing transformers/
+# sentence-transformers (a stray TF install can deadlock the import on macOS).
+import _env_setup  # noqa: F401  (must precede transformers imports)
 import os
-os.environ["TRANSFORMERS_NO_TF"] = "1"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import chromadb
 from chromadb.config import Settings
@@ -83,12 +83,15 @@ class VectorStore:
         # Initialize ChromaDB client
         self.client = chromadb.PersistentClient(path=persist_directory)
 
-        # Get or create collection
+        # Get or create collection. Older ChromaDB raised ValueError when a
+        # collection was missing; newer (rust-backed) versions raise
+        # chromadb.errors.NotFoundError. Catch broadly so this works across
+        # versions, then create the collection on first run.
         try:
             self.collection = self.client.get_collection(name=collection_name)
             print(f"Loaded existing collection '{collection_name}' with {self.collection.count()} documents")
-        except ValueError:
-            # Collection doesn't exist, create it
+        except Exception:
+            # Collection doesn't exist yet — create it.
             self.collection = self.client.create_collection(
                 name=collection_name,
                 metadata={"hnsw:space": "cosine"}
@@ -329,8 +332,9 @@ class VectorStore:
         try:
             self.client.delete_collection(name=self.collection_name)
             print(f"Deleted collection '{self.collection_name}'")
-        except ValueError:
-            # Collection doesn't exist, nothing to delete
+        except Exception:
+            # Collection doesn't exist, nothing to delete (ValueError on older
+            # ChromaDB, NotFoundError on newer versions).
             pass
 
         self.collection = self.client.create_collection(

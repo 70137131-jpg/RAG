@@ -3,6 +3,7 @@ Data Ingestion Script
 Load SQuAD data and populate the vector store
 """
 
+import _env_setup  # noqa: F401  (must be first: forces torch backend, disables TensorFlow)
 from data_loader import SQuADLoader
 from vector_store import VectorStore
 from config import RAGConfig
@@ -18,6 +19,10 @@ def main():
                         help="Number of samples to ingest (default: from config)")
     parser.add_argument("--collection", type=str, default=None,
                         help="Collection name (overrides config)")
+    parser.add_argument("--reset", action="store_true",
+                        help="Reset the collection without prompting if it already has documents")
+    parser.add_argument("--yes", "-y", action="store_true",
+                        help="Non-interactive: append to an existing collection without prompting")
     args = parser.parse_args()
 
     print("="*60)
@@ -59,8 +64,14 @@ def main():
     doc_count = vector_store.collection.count()
     if doc_count > 0:
         print(f"Collection already has {doc_count} documents")
-        response = input("Reset collection? (y/n): ")
-        if response.lower() == 'y':
+        if args.reset:
+            reset = True
+        elif args.yes:
+            reset = False
+        else:
+            reset = input("Reset collection? (y/n): ").lower() == 'y'
+
+        if reset:
             vector_store.reset()
         else:
             print("Adding documents to existing collection...")

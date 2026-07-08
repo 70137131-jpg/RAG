@@ -25,7 +25,7 @@ class RAGPipeline:
     def __init__(
         self,
         vector_store: VectorStore,
-        llm_model: str = "gemini-1.5-flash",  # Default to Gemini 1.5 Flash
+        llm_model: str = "gemini-2.5-flash",  # Default to a current Gemini Flash model
         temperature: float = 0.1,
         max_tokens: int = 300,
         max_context_length: int = 4000,
@@ -54,47 +54,57 @@ class RAGPipeline:
         self.enable_compression = enable_compression
         self.require_citations = require_citations
 
-        # Check if using Gemini
-        self.use_gemini = llm_model.startswith("gemini") or "gemini" in llm_model.lower()
-        
-        if self.use_gemini:
+        # Determine which generation backend to use. The pipeline degrades
+        # gracefully: if no LLM API key is configured (or the requested provider
+        # is unavailable) it falls back to a fully-local extractive answerer so
+        # the app still works end-to-end on localhost with zero external calls.
+        self.client = None
+        self.gemini_model = None
+        self.use_gemini = False
+        self.backend = "offline"
+
+        wants_gemini = llm_model.startswith("gemini") or "gemini" in llm_model.lower()
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        openai_api_key = (
+            os.getenv("OPENROUTER_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+            or os.getenv("DEEPSEEK_API_KEY")
+        )
+
+        if wants_gemini and google_api_key and GEMINI_AVAILABLE:
             # Initialize Gemini client
-            if not GEMINI_AVAILABLE:
-                raise ImportError(
-                    "google-generativeai package is required for Gemini. Install it with: pip install google-generativeai"
-                )
-            
-            google_api_key = os.getenv("GOOGLE_API_KEY")
-            if not google_api_key:
-                raise ValueError(
-                    "GOOGLE_API_KEY not found. Please set GOOGLE_API_KEY in your .env file for Gemini models."
-                )
-            
             genai.configure(api_key=google_api_key)
             self.gemini_model = genai.GenerativeModel(llm_model)
-            self.client = None  # Not used for Gemini
-        else:
-            # Initialize OpenAI-compatible client (works with OpenRouter, OpenAI, DeepSeek, etc.)
-            api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-            if not api_key:
-                raise ValueError(
-                    "API key not found. Please set OPENROUTER_API_KEY, OPENAI_API_KEY, DEEPSEEK_API_KEY, or GOOGLE_API_KEY in your .env file."
-                )
-
-            # Check if using OpenRouter (API key starts with sk-or-v1-)
-            if api_key.startswith("sk-or-v1-"):
+            self.use_gemini = True
+            self.backend = "gemini"
+        elif openai_api_key:
+            # Initialize OpenAI-compatible client (OpenRouter, OpenAI, DeepSeek, ...)
+            if openai_api_key.startswith("sk-or-v1-"):
                 self.client = OpenAI(
-                    api_key=api_key,
+                    api_key=openai_api_key,
                     base_url="https://openrouter.ai/api/v1"
                 )
             else:
-                # Use base URL from env or default to OpenAI
                 base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-                self.client = OpenAI(
-                    api_key=api_key,
-                    base_url=base_url
-                )
-            self.gemini_model = None
+                self.client = OpenAI(api_key=openai_api_key, base_url=base_url)
+            self.backend = "openai"
+        elif wants_gemini and google_api_key and not GEMINI_AVAILABLE:
+            # A Gemini key was provided but the SDK is missing — surface a clear hint
+            # while still allowing the app to run in offline mode.
+            print(
+                "Warning: GOOGLE_API_KEY is set but 'google-generativeai' is not installed. "
+                "Falling back to offline extractive answers. "
+                "Run 'pip install google-generativeai' to enable Gemini."
+            )
+            self.backend = "offline"
+        else:
+            # No usable API key — run in offline extractive mode.
+            print(
+                "No LLM API key found (GOOGLE_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY / "
+                "DEEPSEEK_API_KEY). Running in offline extractive mode — answers are drawn "
+                "directly from retrieved contexts. Add a key to enable LLM generation."
+            )
+            self.backend = "offline"
 
     def retrieve(
         self,
@@ -260,24 +270,31 @@ class RAGPipeline:
 ===== ANSWER =====
 Based on the provided contexts:"""
 
-        # Call LLM API (Gemini or OpenAI-compatible)
+        # Offline mode: no external API — answer extractively from the original
+        # (uncompressed) contexts so sentence boundaries are preserved.
+        if self.backend == "offline":
+            return self._extractive_answer(query, contexts)
+
+        # Call LLM API (Gemini or OpenAI-compatible). If the call fails for any
+        # reason (missing quota, network error, model retired, ...) fall back to
+        # the offline extractive answer so the user still gets a grounded reply.
         try:
-            if self.use_gemini:
+            if self.backend == "gemini":
                 # Use Gemini API
                 generation_config = {
                     "temperature": self.temperature,
                     "max_output_tokens": self.max_tokens,
                 }
-                
+
                 # Gemini uses a single prompt format
                 prompt_text = f"{system_prompt}\n\n{full_prompt}"
-                
+
                 response = self.gemini_model.generate_content(
                     prompt_text,
                     generation_config=generation_config
                 )
-                
-                answer = response.text.strip()
+
+                answer = (response.text or "").strip()
             else:
                 # Use OpenAI-compatible API
                 response = self.client.chat.completions.create(
@@ -292,8 +309,13 @@ Based on the provided contexts:"""
 
                 answer = response.choices[0].message.content.strip()
 
+            if not answer:
+                # Empty completion — degrade gracefully.
+                return self._extractive_answer(query, contexts)
+
         except Exception as e:
-            raise RuntimeError(f"Error generating response with LLM: {str(e)}")
+            print(f"Warning: LLM generation failed ({e}); using offline extractive fallback.")
+            return self._extractive_answer(query, processed_contexts)
 
         # Post-process to detect potential hallucinations
         if self.require_citations and "[Context" not in answer and "cannot answer" not in answer.lower():
@@ -301,6 +323,48 @@ Based on the provided contexts:"""
             answer = f"{answer}\n\n[Note: This answer may not be fully grounded in the provided contexts]"
 
         return answer
+
+    def _extractive_answer(self, query: str, contexts: List[str]) -> str:
+        """
+        Produce a grounded answer without calling any external LLM.
+
+        Scores every sentence across the retrieved contexts by word overlap with
+        the query and returns the best-matching sentences with citations. This
+        keeps the app fully functional on localhost with no API key.
+        """
+        if not contexts:
+            return "I cannot answer this question based on the provided contexts."
+
+        stop_words = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'what', 'which',
+            'who', 'whom', 'whose', 'when', 'where', 'why', 'how', 'did', 'do',
+            'does', 'this', 'that', 'these', 'those', 'it', 'its'
+        }
+        query_words = {w for w in re.findall(r'\b\w+\b', query.lower()) if w not in stop_words}
+
+        scored = []
+        for ctx_idx, ctx in enumerate(contexts):
+            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', ctx) if len(s.strip()) > 10]
+            for sent in sentences:
+                sent_words = {w for w in re.findall(r'\b\w+\b', sent.lower()) if w not in stop_words}
+                overlap = len(query_words & sent_words)
+                if overlap > 0:
+                    scored.append((overlap, ctx_idx, sent))
+
+        if not scored:
+            # No lexical overlap — fall back to the opening of the top context.
+            snippet = contexts[0].strip()
+            snippet = (snippet[:400] + '...') if len(snippet) > 400 else snippet
+            return f"{snippet} [Context 1]"
+
+        # Take the top few most relevant sentences, preserving their order.
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = scored[:3]
+        top_sorted = sorted(top, key=lambda x: (x[1], contexts[x[1]].find(x[2])))
+
+        parts = [f'{sent} [Context {ctx_idx + 1}]' for _, ctx_idx, sent in top_sorted]
+        return ' '.join(parts)
 
     def verify_grounding(self, answer: str, contexts: List[str]) -> Tuple[bool, float]:
         """
@@ -390,7 +454,8 @@ Based on the provided contexts:"""
                 "num_contexts_used": len(self.truncate_contexts(contexts, question)),
                 "context_compressed": self.enable_compression,
                 "citations_required": self.require_citations,
-                "model": self.llm_model
+                "model": self.llm_model if self.backend != "offline" else "offline-extractive",
+                "backend": self.backend
             }
             if grounding_info:
                 response["metadata"]["grounding"] = grounding_info

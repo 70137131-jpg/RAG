@@ -1,3 +1,4 @@
+import _env_setup  # noqa: F401  (must be first: forces torch backend, disables TensorFlow)
 from dotenv import load_dotenv
 load_dotenv()
 
