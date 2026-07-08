@@ -109,7 +109,7 @@ class TestRAGPipelineMocked(unittest.TestCase):
 
         with patch('rag_pipeline.OpenAI') as mock_openai, \
              patch('rag_pipeline.load_dotenv'), \
-             patch.dict('os.environ', {'OPENROUTER_API_KEY': 'sk-or-v1-test-key', 'MODEL': 'gpt-oss-20b'}):
+             patch.dict('os.environ', {'OPENROUTER_API_KEY': 'sk-or-v1-test-key'}, clear=True):
 
             # Setup mock
             mock_client = Mock()
@@ -123,7 +123,7 @@ class TestRAGPipelineMocked(unittest.TestCase):
             mock_openai.return_value = mock_client
 
             # Create pipeline
-            rag = RAGPipeline(vector_store=mock_vs)
+            rag = RAGPipeline(vector_store=mock_vs, llm_model="gpt-oss-20b")
 
             # Generate with custom prompt
             custom_prompt = "You are a specialized assistant."
