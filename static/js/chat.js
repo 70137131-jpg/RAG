@@ -1,4 +1,4 @@
-// RAG Chatbot - Chat Interface JavaScript
+// Retrieval Chat - Chat Interface JavaScript
 
 class ChatBot {
     constructor() {
@@ -111,7 +111,7 @@ class ChatBot {
     autoResizeTextarea() {
         if (this.questionInput) {
             this.questionInput.style.height = 'auto';
-            this.questionInput.style.height = Math.min(this.questionInput.scrollHeight, 120) + 'px';
+            this.questionInput.style.height = Math.min(this.questionInput.scrollHeight, 140) + 'px';
         }
     }
 
@@ -200,7 +200,7 @@ class ChatBot {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}-message`;
         if (animate) {
-            messageDiv.style.animation = 'slideIn 0.3s ease';
+            messageDiv.style.animation = 'rise 0.4s var(--ease) both';
         }
 
         // Avatar
